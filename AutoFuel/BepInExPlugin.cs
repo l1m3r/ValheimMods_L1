@@ -10,62 +10,74 @@ using UnityEngine;
 
 namespace AutoFuel
 {
-    [BepInPlugin("aedenthorn.AutoFuel", "Auto Fuel", "1.2.0")]
+    [BepInPlugin("aedenthorn.AutoFuel", "Auto Fuel", "1.2.1")]
     public class BepInExPlugin: BaseUnityPlugin
     {
-        private static readonly bool isDebug = false;
+        public static ConfigEntry<int> nexusID;
+        public static ConfigEntry<bool> modEnabled;
+        public static ConfigEntry<bool> isDebug;
 
-        public static ConfigEntry<float> dropRange;
-        public static ConfigEntry<float> containerRange;
-        public static ConfigEntry<float> fireplaceRange;
-        public static ConfigEntry<float> smelterOreRange;
-        public static ConfigEntry<float> smelterFuelRange;
+        public static ConfigEntry<bool> distributedFueling;
+        public static ConfigEntry<bool> leaveLastItem;
+        public static ConfigEntry<int> limitFuelAdding;
         public static ConfigEntry<string> fuelDisallowTypes;
-        public static ConfigEntry<string> oreDisallowTypes;
-        public static ConfigEntry<string> toggleKey;
-        public static ConfigEntry<string> toggleString;
         public static ConfigEntry<bool> refuelStandingTorches;
         public static ConfigEntry<bool> refuelWallTorches;
         public static ConfigEntry<bool> refuelFirePits;
+
+        //public static ConfigEntry<float> containerRange;
+        public static ConfigEntry<float> dropedFuelRange;
+        public static ConfigEntry<float> fireplaceRange;
+        public static ConfigEntry<float> smelterOreRange;
+        public static ConfigEntry<float> smelterFuelRange;
+
+        public static ConfigEntry<string> oreDisallowTypes;
         public static ConfigEntry<bool> restrictKilnOutput;
         public static ConfigEntry<int> restrictKilnOutputAmount;
-        public static ConfigEntry<bool> leaveLastItem;
-        public static ConfigEntry<bool> isOn;
-        public static ConfigEntry<bool> modEnabled;
-        public static ConfigEntry<bool> distributedFilling;
-        public static ConfigEntry<int> nexusID;
+
+        public static ConfigEntry<string> toggleKey;
+        public static ConfigEntry<string> toggleString;
+        public static ConfigEntry<bool> enabledDynamicByHKey;
+
 
         private static BepInExPlugin context;
 
-        private static float lastFuel;
-        private static int fuelCount;
+        private static float lastFuelTime;
+        private static int fuelCount; // What is fuelCount and it's related magic number 33 (in relation to delay between fueling?!)
 
         public static void Dbgl(string str = "", bool pref = true)
         {
-            if (isDebug)
+            if (isDebug.Value)
                 Debug.Log((pref ? typeof(BepInExPlugin).Namespace + " " : "") + str);
         }
         private void Awake()
         {
             context = this;
-            dropRange = Config.Bind<float>("General", "DropRange", 5f, "The maximum range to pull dropped fuel");
-            fireplaceRange = Config.Bind<float>("General", "FireplaceRange", 5f, "The maximum range to pull fuel from containers for fireplaces");
-            smelterOreRange = Config.Bind<float>("General", "SmelterOreRange", 5f, "The maximum range to pull fuel from containers for smelters");
-            smelterFuelRange = Config.Bind<float>("General", "SmelterFuelRange", 5f, "The maximum range to pull ore from containers for smelters");
-            fuelDisallowTypes = Config.Bind<string>("General", "FuelDisallowTypes", "RoundLog,FineWood", "Types of item to disallow as fuel (i.e. anything that is consumed), comma-separated.");
-            oreDisallowTypes = Config.Bind<string>("General", "OreDisallowTypes", "RoundLog,FineWood", "Types of item to disallow as ore (i.e. anything that is transformed), comma-separated).");
-            toggleString = Config.Bind<string>("General", "ToggleString", "Auto Fuel: {0}", "Text to show on toggle. {0} is replaced with true/false");
-            toggleKey = Config.Bind<string>("General", "ToggleKey", "", "Key to toggle behaviour. Leave blank to disable the toggle key. Use https://docs.unity3d.com/Manual/ConventionalGameInput.html");
-            refuelStandingTorches = Config.Bind<bool>("General", "RefuelStandingTorches", true, "Refuel standing torches");
-            refuelWallTorches = Config.Bind<bool>("General", "RefuelWallTorches", true, "Refuel wall torches");
-            refuelFirePits = Config.Bind<bool>("General", "RefuelFirePits", true, "Refuel fire pits");
-            restrictKilnOutput = Config.Bind<bool>("General", "RestrictKilnOutput", false, "Restrict kiln output");
-            restrictKilnOutputAmount = Config.Bind<int>("General", "RestrictKilnOutputAmount", 10, "Amount of coal to shut off kiln fueling");
-            isOn = Config.Bind<bool>("General", "IsOn", true, "Behaviour is currently on or not");
-            distributedFilling = Config.Bind<bool>("General", "distributedFueling", false, "If true, refilling will occur one piece of fuel or ore at a time, making filling take longer but be better distributed between objects.");
-            leaveLastItem = Config.Bind<bool>("General", "LeaveLastItem", false, "Don't use last of item in chest");
-            modEnabled = Config.Bind<bool>("General", "Enabled", true, "Enable this mod");
-            nexusID = Config.Bind<int>("General", "NexusID", 159, "Nexus mod ID for updates");
+
+            nexusID =       Config.Bind<int>("#0_General", "NexusID", 159, "Nexus mod ID for updates");
+            modEnabled =    Config.Bind<bool>("#0_General", "ModEnabled", true, "Enable this mod");
+            isDebug =       Config.Bind<bool>("#0_General", "IsDebug", false, "Debug mode");
+
+            distributedFueling =    Config.Bind<bool>("#1_Fueling", "distributedFueling", false, "If true, refilling will occur one piece of fuel or ore at a time, making filling take longer but be better distributed between objects.");
+            leaveLastItem =         Config.Bind<bool>("#1_Fueling", "LeaveLastItem", true, "Don't use last of item in chest");
+            limitFuelAdding =       Config.Bind<int>("#1_Fueling", "limitFuelAdding", 2, "Maximum number of fuel items AutoFuel is allowed to add.");
+            fuelDisallowTypes =     Config.Bind<string>("#1_Fueling", "FuelDisallowTypes", "RoundLog,FineWood", "Types of item to disallow as fuel (i.e. anything that is consumed), comma-separated.");
+            refuelStandingTorches = Config.Bind<bool>("#1_Fueling", "RefuelStandingTorches", true, "Refuel standing torches");
+            refuelWallTorches =     Config.Bind<bool>("#1_Fueling", "RefuelWallTorches", true, "Refuel wall torches");
+            refuelFirePits =        Config.Bind<bool>("#1_Fueling", "RefuelFirePits", true, "Refuel fire pits");
+
+            dropedFuelRange =   Config.Bind<float>("#2_Ranges", "DropedFuelRange", 5f, "The maximum range to pull dropped fuel");
+            fireplaceRange =    Config.Bind<float>("#2_Ranges", "FireplaceRange", 5f, "The maximum range to pull fuel from containers for fireplaces");
+            smelterOreRange =   Config.Bind<float>("#2_Ranges", "SmelterOreRange", 5f, "The maximum range to pull fuel from containers for smelters");
+            smelterFuelRange =  Config.Bind<float>("#2_Ranges", "SmelterFuelRange", 5f, "The maximum range to pull ore from containers for smelters");
+
+            oreDisallowTypes =      Config.Bind<string>("#3_Kiln specific", "OreDisallowTypes", "RoundLog,FineWood", "Types of item to disallow as ore (i.e. anything that is transformed), comma-separated).");
+            restrictKilnOutput =    Config.Bind<bool>("#3_Kiln specific", "RestrictKilnOutput", false, "Restrict kiln output");
+            restrictKilnOutputAmount = Config.Bind<int>("#3_Kiln specific", "RestrictKilnOutputAmount", 10, "Amount of coal to shut off kiln fueling");
+
+            toggleKey =             Config.Bind<string>("#4_Hotkey", "ToggleKey", "", "Key to toggle behaviour. Leave blank to disable the toggle key. Use https://docs.unity3d.com/Manual/ConventionalGameInput.html");
+            toggleString =          Config.Bind<string>("#4_Hotkey", "ToggleString", "Auto Fuel: {0}", "Text to show on toggle. {0} is replaced with true/false");
+            enabledDynamicByHKey =  Config.Bind<bool>("#4_Hotkey", "EnabledDynamicByHKey", true, "Behaviour is currently on or not");
 
             if (!modEnabled.Value)
                 return;
@@ -77,9 +89,11 @@ namespace AutoFuel
         {
             if (AedenthornUtils.CheckKeyDown(toggleKey.Value) && !AedenthornUtils.IgnoreKeyPresses(true))
             {
-                isOn.Value = !isOn.Value;
+                enabledDynamicByHKey.Value = !enabledDynamicByHKey.Value;
                 Config.Save();
-                Player.m_localPlayer.Message(MessageHud.MessageType.Center, string.Format(toggleString.Value, isOn.Value), 0, null);
+                Player.m_localPlayer.Message(MessageHud.MessageType.Center,
+                    string.Format(toggleString.Value,enabledDynamicByHKey.Value),
+                    0, null);
             }
 
         }
@@ -135,19 +149,25 @@ namespace AutoFuel
         {
             static void Postfix(Fireplace __instance, ZNetView ___m_nview)
             {
-                if (!Player.m_localPlayer || !isOn.Value || !___m_nview.IsOwner() || (__instance.name.Contains("groundtorch") && !refuelStandingTorches.Value) || (__instance.name.Contains("walltorch") && !refuelWallTorches.Value) || (__instance.name.Contains("fire_pit") && !refuelFirePits.Value))
+                if (!Player.m_localPlayer
+                    || !enabledDynamicByHKey.Value
+                    || !___m_nview.IsOwner()
+                    || (__instance.name.Contains("groundtorch") && !refuelStandingTorches.Value)
+                    || (__instance.name.Contains("walltorch") && !refuelWallTorches.Value)
+                    || (__instance.name.Contains("fire_pit") && !refuelFirePits.Value))
                     return;
 
-                if (Time.time - lastFuel < 0.1)
-                {
+                // Why TF is this triggering constantly?
+                // Maybe trigger only on specific events - like a fireplace fuel reserves going down?
+                // For empty fire places if something was dropped in the area (by the player) or a chest gets updated?
+                Dbgl($"times: current={Time.time} - lastFT={lastFuelTime}  |  fuelCount={fuelCount}");
+                if (Time.time - lastFuelTime < 0.1) {
                     fuelCount++;
                     RefuelTorch(__instance, ___m_nview, fuelCount * 33);
-                }
-                else
-                {
+                } else {
                     fuelCount = 0;
-                    lastFuel = Time.time;
-                    RefuelTorch(__instance, ___m_nview, 0);
+                    lastFuelTime = Time.time;
+                    RefuelTorch(__instance, ___m_nview, fuelCount);
                 }
             }
         }
@@ -161,12 +181,25 @@ namespace AutoFuel
                 if (!fireplace || !znview || !znview.IsValid() || !modEnabled.Value)
                     return;
 
-                int maxFuel = (int)(fireplace.m_maxFuel - Mathf.Ceil(znview.GetZDO().GetFloat("fuel", 0f)));
+                // maxFuelToAdd will be the free fuel-space left in any given fireplace.
+                // int maxFuelToAdd = (int)(fireplace.m_maxFuel - Mathf.Ceil(znview.GetZDO().GetFloat("fuel", 0f)));
+                int maxFuelToAdd = (int)(Mathf.Ceil(znview.GetZDO().GetFloat("fuel", 0f)));
+                Dbgl($"maxFuelToAdd: {maxFuelToAdd} - fuel reserves {fireplace.transform.position}");
+                
+                if (maxFuelToAdd > limitFuelAdding.Value)
+                    return; // maxFuelToAdd = 0;
+
+                maxFuelToAdd = (int)(fireplace.m_maxFuel) - maxFuelToAdd;
+                Dbgl($"maxFuelToAdd: {maxFuelToAdd} - space left");
+                
+                if (maxFuelToAdd > limitFuelAdding.Value)
+                    maxFuelToAdd = limitFuelAdding.Value;
+                Dbgl($"maxFuelToAdd: {maxFuelToAdd} - allowed to add (limit={limitFuelAdding.Value})");
 
                 List<Container> nearbyContainers = GetNearbyContainers(fireplace.transform.position, fireplaceRange.Value);
 
                 Vector3 position = fireplace.transform.position + Vector3.up;
-                foreach (Collider collider in Physics.OverlapSphere(position, dropRange.Value, LayerMask.GetMask(new string[] { "item" })))
+                foreach (Collider collider in Physics.OverlapSphere(position, dropedFuelRange.Value, LayerMask.GetMask(new string[] { "item" })))
                 {
                     if (collider?.attachedRigidbody)
                     {
@@ -178,7 +211,7 @@ namespace AutoFuel
 
                         string name = GetPrefabName(item.gameObject.name);
 
-                        if (item.m_itemData.m_shared.m_name == fireplace.m_fuelItem.m_itemData.m_shared.m_name && maxFuel > 0)
+                        if (item.m_itemData.m_shared.m_name == fireplace.m_fuelItem.m_itemData.m_shared.m_name && maxFuelToAdd > 0)
                         {
 
                             if (fuelDisallowTypes.Value.Split(',').Contains(name))
@@ -189,8 +222,8 @@ namespace AutoFuel
 
                             Dbgl($"auto adding fuel {name} from ground");
 
-                            int amount = Mathf.Min(item.m_itemData.m_stack, maxFuel);
-                            maxFuel -= amount;
+                            int amount = Mathf.Min(item.m_itemData.m_stack, maxFuelToAdd);
+                            maxFuelToAdd -= amount;
 
                             for (int i = 0; i < amount; i++)
                             {
@@ -201,7 +234,7 @@ namespace AutoFuel
                                     else
                                         ZNetScene.instance.Destroy(item.gameObject);
                                     znview.InvokeRPC("RPC_AddFuel", new object[] { });
-                                    if (distributedFilling.Value)
+                                    if (distributedFueling.Value)
                                         return;
                                     break;
 
@@ -210,18 +243,18 @@ namespace AutoFuel
                                 item.m_itemData.m_stack--;
                                 znview.InvokeRPC("RPC_AddFuel", new object[] { });
                                 Traverse.Create(item).Method("Save").GetValue();
-                                if (distributedFilling.Value)
+                                if (distributedFueling.Value)
                                     return;
                             }
                         }
                     }
                 }
-                foreach (Container c in nearbyContainers)
+                foreach (Container cntnr in nearbyContainers)
                 {
-                    if (fireplace.m_fuelItem && maxFuel > 0)
+                    if (fireplace.m_fuelItem && maxFuelToAdd > 0)
                     {
                         List<ItemDrop.ItemData> itemList = new List<ItemDrop.ItemData>();
-                        c.GetInventory().GetAllItems(fireplace.m_fuelItem.m_itemData.m_shared.m_name, itemList);
+                        cntnr.GetInventory().GetAllItems(fireplace.m_fuelItem.m_itemData.m_shared.m_name, itemList);
 
                         foreach (var fuelItem in itemList)
                         {
@@ -229,19 +262,19 @@ namespace AutoFuel
                             {
                                 if (fuelDisallowTypes.Value.Split(',').Contains(fuelItem.m_dropPrefab.name))
                                 {
-                                    //Dbgl($"container at {c.transform.position} has {item.m_stack} {item.m_dropPrefab.name} but it's forbidden by config");
+                                    Dbgl($"container at {cntnr.transform.position} has {fuelItem.m_stack} {fuelItem.m_dropPrefab.name} but it's forbidden by config");
                                     continue;
                                 }
-                                maxFuel--;
+                                maxFuelToAdd--;
 
-                                Dbgl($"container at {c.transform.position} has {fuelItem.m_stack} {fuelItem.m_dropPrefab.name}, taking one");
+                                Dbgl($"container at {cntnr.transform.position} has {fuelItem.m_stack} {fuelItem.m_dropPrefab.name}, taking one");
 
                                 znview.InvokeRPC("RPC_AddFuel", new object[] { });
 
-                                c.GetInventory().RemoveItem(fireplace.m_fuelItem.m_itemData.m_shared.m_name, 1);
-                                typeof(Container).GetMethod("Save", BindingFlags.NonPublic | BindingFlags.Instance).Invoke(c, new object[] { });
-                                typeof(Inventory).GetMethod("Changed", BindingFlags.NonPublic | BindingFlags.Instance).Invoke(c.GetInventory(), new object[] { });
-                                if (distributedFilling.Value)
+                                cntnr.GetInventory().RemoveItem(fireplace.m_fuelItem.m_itemData.m_shared.m_name, 1);
+                                typeof(Container).GetMethod("Save", BindingFlags.NonPublic | BindingFlags.Instance).Invoke(cntnr, new object[] { });
+                                typeof(Inventory).GetMethod("Changed", BindingFlags.NonPublic | BindingFlags.Instance).Invoke(cntnr.GetInventory(), new object[] { });
+                                if (distributedFueling.Value)
                                     return;
                             }
                         }
@@ -256,10 +289,10 @@ namespace AutoFuel
         {
             static void Postfix(Smelter __instance, ZNetView ___m_nview)
             {
-                if (!Player.m_localPlayer || !isOn.Value || ___m_nview == null || !___m_nview.IsOwner())
+                if (!Player.m_localPlayer || !enabledDynamicByHKey.Value || ___m_nview == null || !___m_nview.IsOwner())
                     return;
 
-                if (Time.time - lastFuel < 0.1)
+                if (Time.time - lastFuelTime < 0.1)
                 {
                     fuelCount++;
                     RefuelSmelter(__instance, ___m_nview, fuelCount * 33);
@@ -267,8 +300,8 @@ namespace AutoFuel
                 else
                 {
                     fuelCount = 0;
-                    lastFuel = Time.time;
-                    RefuelSmelter(__instance, ___m_nview, 0);
+                    lastFuelTime = Time.time;
+                    RefuelSmelter(__instance, ___m_nview, fuelCount);
                 }
 
             }
@@ -313,7 +346,7 @@ namespace AutoFuel
             bool ored = false;
 
             Vector3 position = __instance.transform.position + Vector3.up;
-            foreach (Collider collider in Physics.OverlapSphere(position, dropRange.Value, LayerMask.GetMask(new string[] { "item" })))
+            foreach (Collider collider in Physics.OverlapSphere(position, dropedFuelRange.Value, LayerMask.GetMask(new string[] { "item" })))
             {
                 if (collider?.attachedRigidbody)
                 {
@@ -352,7 +385,7 @@ namespace AutoFuel
                                     else
                                         ZNetScene.instance.Destroy(item.gameObject);
                                     ___m_nview.InvokeRPC("RPC_AddOre", new object[] { name });
-                                    if (distributedFilling.Value)
+                                    if (distributedFueling.Value)
                                         ored = true;
                                     break;
                                 }
@@ -360,7 +393,7 @@ namespace AutoFuel
                                 item.m_itemData.m_stack--;
                                 ___m_nview.InvokeRPC("RPC_AddOre", new object[] { name });
                                 Traverse.Create(item).Method("Save").GetValue();
-                                if (distributedFilling.Value)
+                                if (distributedFueling.Value)
                                     ored = true;
                             }
                         }
@@ -389,7 +422,7 @@ namespace AutoFuel
                                 else
                                     ZNetScene.instance.Destroy(item.gameObject);
                                 ___m_nview.InvokeRPC("RPC_AddFuel", new object[] { });
-                                if (distributedFilling.Value)
+                                if (distributedFueling.Value)
                                     fueled = true;
                                 break;
 
@@ -398,7 +431,7 @@ namespace AutoFuel
                             item.m_itemData.m_stack--;
                             ___m_nview.InvokeRPC("RPC_AddFuel", new object[] { });
                             Traverse.Create(item).Method("Save").GetValue();
-                            if (distributedFilling.Value)
+                            if (distributedFueling.Value)
                             {
                                 fueled = true;
                                 break;
@@ -431,7 +464,7 @@ namespace AutoFuel
                             c.GetInventory().RemoveItem(itemConversion.m_from.m_itemData.m_shared.m_name, 1);
                             typeof(Container).GetMethod("Save", BindingFlags.NonPublic | BindingFlags.Instance).Invoke(c, new object[] { });
                             typeof(Inventory).GetMethod("Changed", BindingFlags.NonPublic | BindingFlags.Instance).Invoke(c.GetInventory(), new object[] { });
-                            if (distributedFilling.Value)
+                            if (distributedFueling.Value)
                             {
                                 ored = true;
                                 break;
@@ -466,7 +499,7 @@ namespace AutoFuel
                         c.GetInventory().RemoveItem(__instance.m_fuelItem.m_itemData.m_shared.m_name, 1);
                         typeof(Container).GetMethod("Save", BindingFlags.NonPublic | BindingFlags.Instance).Invoke(c, new object[] { });
                         typeof(Inventory).GetMethod("Changed", BindingFlags.NonPublic | BindingFlags.Instance).Invoke(c.GetInventory(), new object[] { });
-                        if (distributedFilling.Value)
+                        if (distributedFueling.Value)
                         {
                             fueled = true;
                             break;
