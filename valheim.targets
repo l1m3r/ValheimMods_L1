@@ -33,9 +33,9 @@
 
   <!-- Find GamePath -->
 	<Choose>
-		<When Condition="Exists('$(GamePathFile)')">
+		<When Condition="Exists('$(GamePathFile)') AND $(GamePath) == ''">
 			<PropertyGroup>
-				<GamePath Condition="!Exists('$(GamePath)')">$([System.IO.File]::ReadAllText("$(GamePathFile)"))</GamePath>
+				<GamePath>$([System.IO.File]::ReadAllText("$(GamePathFile)"))</GamePath>
 			</PropertyGroup>
 		</When>
 		<When Condition="($(OS) == 'Unix' OR $(OS) == 'OSX') AND $(GamePath) == ''">
