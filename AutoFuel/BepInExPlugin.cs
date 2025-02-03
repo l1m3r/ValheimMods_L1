@@ -25,7 +25,6 @@ namespace AutoFuel
         public static ConfigEntry<bool> refuelWallTorches;
         public static ConfigEntry<bool> refuelFirePits;
 
-        //public static ConfigEntry<float> containerRange;
         public static ConfigEntry<float> dropedFuelRange;
         public static ConfigEntry<float> fireplaceRange;
         public static ConfigEntry<float> smelterOreRange;
@@ -157,10 +156,10 @@ namespace AutoFuel
                     || (__instance.name.Contains("fire_pit") && !refuelFirePits.Value))
                     return;
 
-                // Why TF is this triggering constantly?
+                // WhyTF is this triggering constantly?
                 // Maybe trigger only on specific events - like a fireplace fuel reserves going down?
                 // For empty fire places if something was dropped in the area (by the player) or a chest gets updated?
-                Dbgl($"times: current={Time.time} - lastFT={lastFuelTime}  |  fuelCount={fuelCount}");
+                Dbgl($"times: current{Time.time} - lastFT{lastFuelTime} = {Time.time - lastFuelTime}  |  fuelCount={fuelCount}");
                 if (Time.time - lastFuelTime < 0.1) {
                     fuelCount++;
                     RefuelTorch(__instance, ___m_nview, fuelCount * 33);
@@ -181,17 +180,18 @@ namespace AutoFuel
                 if (!fireplace || !znview || !znview.IsValid() || !modEnabled.Value)
                     return;
 
-                // maxFuelToAdd will be the free fuel-space left in any given fireplace.
-                // int maxFuelToAdd = (int)(fireplace.m_maxFuel - Mathf.Ceil(znview.GetZDO().GetFloat("fuel", 0f)));
+                // current amount of fuel in "fireplace".
                 int maxFuelToAdd = (int)(Mathf.Ceil(znview.GetZDO().GetFloat("fuel", 0f)));
                 Dbgl($"maxFuelToAdd: {maxFuelToAdd} - fuel reserves {fireplace.transform.position}");
                 
                 if (maxFuelToAdd > limitFuelAdding.Value)
-                    return; // maxFuelToAdd = 0;
+                    return; // still enough fuel in "fireplace".
 
+                // fuel-space left in "fireplace"..
                 maxFuelToAdd = (int)(fireplace.m_maxFuel) - maxFuelToAdd;
                 Dbgl($"maxFuelToAdd: {maxFuelToAdd} - space left");
-                
+
+                // allowed amount of fuel to be added by AutoFuel.
                 if (maxFuelToAdd > limitFuelAdding.Value)
                     maxFuelToAdd = limitFuelAdding.Value;
                 Dbgl($"maxFuelToAdd: {maxFuelToAdd} - allowed to add (limit={limitFuelAdding.Value})");
