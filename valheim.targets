@@ -474,7 +474,7 @@
 	<!--
     <Copy SourceFiles="@(AllFiles)" DestinationFolder="$(GamePath)\BepInEx\plugins\%(RecursiveDir)"></Copy>
 	-->
-	<Copy SourceFiles="@(AllFiles)" DestinationFolder="$(GamePath)\BepInEx\plugins\%(RecursiveDir)"></Copy>
+	<Copy SourceFiles="@(AllFiles)" DestinationFolder="$(GamePath)\BepInEx\plugins\_inDevelopment\%(RecursiveDir)"></Copy>
 	  
 	<Delete Files="$(ProjectDir)..\_CompiledBinaries\$(TargetName).zip" />
 	<Copy SourceFiles="@(AllFiles)" DestinationFolder="$(ProjectDir)..\_CompiledBinaries\$(TargetName)\%(RecursiveDir)"></Copy>

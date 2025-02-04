@@ -13,7 +13,7 @@ namespace AutoFuel
     [BepInPlugin("aedenthorn.AutoFuel", "Auto Fuel", "1.2.0")]
     public class BepInExPlugin: BaseUnityPlugin
     {
-        private static readonly bool isDebug = false;
+        public static ConfigEntry<bool> isDebug;
 
         public static ConfigEntry<float> dropRange;
         public static ConfigEntry<float> containerRange;
@@ -42,12 +42,14 @@ namespace AutoFuel
 
         public static void Dbgl(string str = "", bool pref = true)
         {
-            if (isDebug)
+            if (isDebug.Value)
                 Debug.Log((pref ? typeof(BepInExPlugin).Namespace + " " : "") + str);
         }
         private void Awake()
         {
             context = this;
+            isDebug = Config.Bind<bool>("General", "IsDebug", false, "Debug Mode");
+
             dropRange = Config.Bind<float>("General", "DropRange", 5f, "The maximum range to pull dropped fuel");
             fireplaceRange = Config.Bind<float>("General", "FireplaceRange", 5f, "The maximum range to pull fuel from containers for fireplaces");
             smelterOreRange = Config.Bind<float>("General", "SmelterOreRange", 5f, "The maximum range to pull fuel from containers for smelters");
