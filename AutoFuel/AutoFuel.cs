@@ -225,12 +225,15 @@ namespace AutoFuel
                 // Refill Fireplaces/Torches with dropped fuel.
                 if (rangeGlobMin < droppedFuelRange.Value & droppedFuelRange.Value <= rangeGlobMax)
                 {
-                    Vector3 position = __instanceFireplace.transform.position + Vector3.up;
-                    foreach (Collider collider in Physics.OverlapSphere(position, droppedFuelRange.Value, LayerMask.GetMask(new string[] { "item" })))
+                    foreach (Collider clldr in Physics.OverlapSphere(
+                        __instanceFireplace.transform.position + Vector3.up,
+                        droppedFuelRange.Value,
+                        LayerMask.GetMask(new string[] { "item" })
+                        ))
                     {
-                        if (collider?.attachedRigidbody)
+                        if (clldr?.attachedRigidbody)
                         {
-                            ItemDrop item = collider.attachedRigidbody.GetComponent<ItemDrop>();
+                            ItemDrop item = clldr.attachedRigidbody.GetComponent<ItemDrop>();
                             //Dbgl($"nearby item name: {item.m_itemData.m_dropPrefab.name}");
 
                             if (item?.GetComponent<ZNetView>()?.IsValid() != true)
@@ -264,7 +267,6 @@ namespace AutoFuel
                                         if (distributedFilling.Value)
                                             return;
                                         break;
-
                                     }
 
                                     item.m_itemData.m_stack--;
@@ -280,8 +282,7 @@ namespace AutoFuel
 
                 // Refill Fireplaces/Torches from chests.
                 if (cntnrRangeFires.Value > rangeGlobMax) cntnrRangeFires.Value = -1;
-                List<Container> nearbyContainers = GetNearbyContainers(__instanceFireplace.transform.position, cntnrRangeFires.Value);
-                foreach (Container cntnr in nearbyContainers)
+                foreach (Container cntnr in GetNearbyContainers(__instanceFireplace.transform.position, cntnrRangeFires.Value))
                 {
                     if (__instanceFireplace.m_fuelItem && maxFuelToAdd > 0)
                     {
@@ -340,7 +341,6 @@ namespace AutoFuel
                     lastFuelTime = Time.time;
                     RefuelSmelter(__instance, ___m_nview, fuelCount);
                 }
-
             }
         }
 
@@ -404,7 +404,6 @@ namespace AutoFuel
                                 break;
                             if (item.m_itemData.m_shared.m_name == itemConversion.m_from.m_itemData.m_shared.m_name && maxOre > 0)
                             {
-
                                 if (oreDisallowTypes.Value.Split(',').Contains(name))
                                 {
                                     Dbgl($"Ground has {item.m_itemData.m_stack} {name} but it's forbidden by config.");
@@ -441,7 +440,6 @@ namespace AutoFuel
 
                         if (__instanceSmltr.m_fuelItem && item.m_itemData.m_shared.m_name == __instanceSmltr.m_fuelItem.m_itemData.m_shared.m_name && maxFuel > 0 && !fueled)
                         {
-
                             if (fuelDisallowTypes.Value.Split(',').Contains(name))
                             {
                                 Dbgl($"ground has {item.m_itemData.m_dropPrefab.name} but it's forbidden by config.");
@@ -465,7 +463,6 @@ namespace AutoFuel
                                     if (distributedFilling.Value)
                                         fueled = true;
                                     break;
-
                                 }
 
                                 item.m_itemData.m_stack--;
