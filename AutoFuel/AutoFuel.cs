@@ -22,8 +22,9 @@ namespace AutoFuel
         public static ConfigEntry<int> limitFuelAdding;
         public static ConfigEntry<string> fuelDisallowTypes;
         public static ConfigEntry<bool> refuelStandingTorches;
-        public static ConfigEntry<bool> refuelWallTorches;
-        public static ConfigEntry<bool> refuelFirePits;
+        // public static ConfigEntry<bool> refuelWallTorches;   removed because there's only one of these.
+        // public static ConfigEntry<bool> refuelFirePits;      two but same...
+        public static ConfigEntry<string> burnerDisallowTypes;
 
         public static ConfigEntry<float> droppedFuelRange;
         public static ConfigEntry<float> cntnrRangeFires;
@@ -47,6 +48,10 @@ namespace AutoFuel
         private static readonly int rangeGlobMax = 20;
         private static readonly string limitMinMax = $"{strNL}Accepted range: {rangeGlobMin}<X<={rangeGlobMax}. Feature disabled when outside that range.";
 
+        // dynamically read this from game data instead?!
+        private static readonly string knownBurners = "fire_pit,fire_pit_iron,hearth,bonfire,piece_brazierceiling01,piece_brazierfloor01,piece_brazierfloor02,piece_walltorch,piece_groundtorch,piece_groundtorch_wood,piece_groundtorch_green,piece_groundtorch_blue";
+
+
         public static void Dbgl(string str = "", bool pref = true)
         {
             if (isDebug.Value)
@@ -64,23 +69,22 @@ namespace AutoFuel
             isDebug =    Config.Bind<bool>("#0_General", "IsDebug", false,
                 "Toggle debug mode.");
 
-            distributedFilling =    Config.Bind<bool>("#1_Fueling", "DistributedFilling", false,
+            distributedFilling =    Config.Bind<bool>("#1_Fueling", "A_DistributedFilling", false,
                 $"If enabled, refilling will occur one piece of fuel/ore at a time,{strNL}making filling take longer but be better distributed between objects.");
-            leaveLastItem =         Config.Bind<bool>("#1_Fueling", "LeaveLastItem", true,
+            leaveLastItem =         Config.Bind<bool>("#1_Fueling", "B_LeaveLastItem", true,
                 "Don't use last of item in chests/containers.");
-            limitFuelAdding =       Config.Bind<int>("#1_Fueling", "LimitFuelAdding", 1,
+            limitFuelAdding =       Config.Bind<int>("#1_Fueling", "C_LimitFuelAdding", 1,
                 $"Torches/fireplaces get filled up to this amount +1.{strNL}(smelters, kilns & refineries are exempt).");
-            fuelDisallowTypes =     Config.Bind<string>("#1_Fueling", "FuelDisallowTypes", "RoundLog,FineWood,GreydwarfEye,Guck",
+            fuelDisallowTypes =     Config.Bind<string>("#1_Fueling", "D_FuelDisallowTypes", "RoundLog,FineWood,GreydwarfEye,Guck",
                 $"Types of item to disallow as fuel/ore (i.e. anything that is consumed).{strNL}Comma-separated list (Wood,Resin,Sap,...).");
-            refuelStandingTorches = Config.Bind<bool>("#1_Fueling", "RefuelStandingTorches", true,
-                "Refuel standing torches.");
-            refuelWallTorches =     Config.Bind<bool>("#1_Fueling", "RefuelWallTorches", true,
-                "Refuel wall torches.");
-            refuelFirePits =        Config.Bind<bool>("#1_Fueling", "RefuelFirePits", true,
-                "Refuel fire pits.");
-            /* More enable options for other "fireplace" types? Maybe as a list instead of individual bools?
-             * fire_pit, fire_pit_iron, hearth, bonfire, piece_brazierceiling01, piece_brazierfloor01, piece_brazierfloor02, piece_walltorch, piece_groundtorch, piece_groundtorch_wood, piece_groundtorch_green, piece_groundtorch_blue
-             */
+            burnerDisallowTypes =   Config.Bind<string>("#1_Fueling", "E_BurnerDisallowTypes", "",
+                $"'Fireplaces' that are not AutoFuel-ed.{strNL}Comma-separated list with:{strNL}{knownBurners}");
+            refuelStandingTorches = Config.Bind<bool>("#1_Fueling", "F_RefuelStandingTorches", true,
+                "Refuel standing torches (group enable/disable toggle).");
+            //refuelWallTorches =     Config.Bind<bool>("#1_Fueling", "RefuelWallTorches", true,
+            //  "Refuel wall torches.");
+            //refuelFirePits =        Config.Bind<bool>("#1_Fueling", "RefuelFirePits", true,
+            //  "Refuel fire pits.");
 
             cntnrRangeFires =     Config.Bind<float>("#2_Ranges", "CntnrRangeFuel4fires", 2f,
                 "Max distance to pull fuel from container for fireplaces & torches." + limitMinMax);
@@ -89,13 +93,13 @@ namespace AutoFuel
             cntnrRangeSmltrOre =  Config.Bind<float>("#2_Ranges", "CntnrRangeOre4smelter_refinery_kiln", 2.5f,
                 "Max distance to pull ore from container for smelters, kilns & refineries." + limitMinMax);
             droppedFuelRange =    Config.Bind<float>("#2_Ranges", "DropedFuOrelRange", 3f,
-                "Max distance to take dropped fuel/ore." + limitMinMax);
+                "Max distance to take dropped fuel and/or ore." + limitMinMax);
 
-            oreDisallowTypes =       Config.Bind<string>("#3_specific_to_KilnSmelterRefinery", "OreDisallowTypes", "RoundLog,FineWood",
-                $"Types of item to disallow as ore (i.e. anything that is transformed).{strNL}Comma-separated list with:{strNL}" +
-                $"Softtissue, TinOre, CopperOre, CopperScrap, BronzeScrap, IronOre, IronScrap, SilverOre, Pickable_BogIronOre, BlackMetalScrap, FlametalOre, FlametalOreNew");
+            oreDisallowTypes = Config.Bind<string>("#3_specific_to_KilnSmelterRefinery", "OreDisallowTypes", "RoundLog,FineWood",
+                $"Types of item to disallow as ore (i.e. anything that is transformed).{strNL}Comma-separated list with:{strNL}"
+                + $"Softtissue, TinOre, CopperOre, CopperScrap, BronzeScrap, IronOre, IronScrap, SilverOre, Pickable_BogIronOre, BlackMetalScrap, FlametalOre, FlametalOreNew");
             restrictKilnFill = Config.Bind<int>("#3_specific_to_KilnSmelterRefinery", "RestrictKilnFill", -1,
-                $"AutoFuel can fill kilns up to this ammount.{strNL}This limits what kilns can process in absence of any players.{strNL}Negative values disable this limit.");
+                $"AutoFuel can fill kilns up to this amount.{strNL}This limits what kilns can process in absence of any players.{strNL}x=0 disables Kilns; x<0 disables any limit.");
 
             toggleKey =    Config.Bind<string>("#4_Hotkey", "ToggleKey", "",
                 $"Key to toggle behavior. Leave blank to disable the toggle key.{strNL}" +
@@ -110,6 +114,7 @@ namespace AutoFuel
 
             Harmony.CreateAndPatchAll(Assembly.GetExecutingAssembly(), null);
         }
+
 
         private void Update()
         {
@@ -179,14 +184,18 @@ namespace AutoFuel
             // Why can I not set the same var name in "RefuelTorch(Fireplace ...)" & "Postfix(Fireplace ...)"?!
             static void Postfix(Fireplace __instance, ZNetView ___m_nview)
             {
-                // GetPrefabName(__instance.name) to compare with fireplace blocklist?!
+                string frplcName = GetPrefabName(__instance.name);
+                if (!knownBurners.Split(',').Contains(frplcName))
+                    Dbgl($"New 'unknow' burner found: {frplcName}");
 
                 if (!Player.m_localPlayer
                     || !toggleState.Value
                     || !___m_nview.IsOwner()
-                    || (__instance.name.Contains("groundtorch") && !refuelStandingTorches.Value)
-                    || (__instance.name.Contains("walltorch") && !refuelWallTorches.Value)
-                    || (__instance.name.Contains("fire_pit") && !refuelFirePits.Value))
+                    || (frplcName.Contains("groundtorch") && !refuelStandingTorches.Value)
+                    // || (__instance.name.Contains("walltorch") && !refuelWallTorches.Value)
+                    // || (__instance.name.Contains("fire_pit") && !refuelFirePits.Value)
+                    || burnerDisallowTypes.Value.Split(',').Contains(frplcName)
+                    )
                     return;
 
                 // WhyTF is this triggering constantly?
@@ -312,7 +321,7 @@ namespace AutoFuel
                             {
                                 if (fuelDisallowTypes.Value.Split(',').Contains(fuelItem.m_dropPrefab.name))
                                 {
-                                    Dbgl($"cntnr@{cntnr.transform.position} has {fuelItem.m_stack} {fuelItem.m_dropPrefab.name} but it's forbidden by config.");
+                                    Dbgl($"{fuelItem.m_stack} {fuelItem.m_dropPrefab.name} in cntnr@{cntnr.transform.position} but it's forbidden by config.");
                                     continue;
                                 }
                                 maxFuelToAdd--;
@@ -559,7 +568,7 @@ namespace AutoFuel
                         maxFuel--;
                         if (fuelDisallowTypes.Value.Split(',').Contains(fuelItem.m_dropPrefab.name))
                         {
-                            Dbgl($"cntnr@{cntnr.transform.position} has {fuelItem.m_stack} {fuelItem.m_dropPrefab.name} but it's forbidden by config.");
+                            Dbgl($"{fuelItem.m_stack} {fuelItem.m_dropPrefab.name} in cntnr@{cntnr.transform.position} but it's forbidden by config.");
                             continue;
                         }
 
